@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FitFlow — Train with precision.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0A0A0F; --surface: #111118; --card: #16161F; --border: #22222E;
+      --mint: #00F5A0; --mint-dim: #00C47F; --mint-glow: rgba(0,245,160,0.15);
+      --text: #E8E8F0; --muted: #6B6B80;
+      --mono: 'JetBrains Mono', monospace;
+      --serif: 'DM Serif Display', serif;
+      --sans: 'Inter', sans-serif;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--sans); font-size: 16px; line-height: 1.6;
+      -webkit-font-smoothing: antialiased; cursor: none; overflow-x: hidden;
+    }
+
+    /* ── CUSTOM CURSOR ── */
+    #cursor-dot {
+      position: fixed; top: 0; left: 0; width: 8px; height: 8px;
+      background: var(--mint); border-radius: 50%; pointer-events: none;
+      z-index: 9999; transform: translate(-50%,-50%);
+      transition: width 0.15s, height 0.15s, background 0.15s;
+      mix-blend-mode: normal;
+    }
+    #cursor-ring {
+      position: fixed; top: 0; left: 0; width: 36px; height: 36px;
+      border: 1px solid rgba(0,245,160,0.5); border-radius: 50%;
+      pointer-events: none; z-index: 9998; transform: translate(-50%,-50%);
+      transition: width 0.35s cubic-bezier(.25,.46,.45,.94),
+                  height 0.35s cubic-bezier(.25,.46,.45,.94),
+                  border-color 0.2s, opacity 0.2s;
+    }
+    body.cursor-hover #cursor-dot { width: 12px; height: 12px; background: #fff; }
+    body.cursor-hover #cursor-ring { width: 56px; height: 56px; border-color: var(--mint); }
+    body.cursor-click #cursor-dot { width: 6px; height: 6px; }
+    body.cursor-click #cursor-ring { width: 28px; height: 28px; opacity: 0.6; }
+
+    /* ── CANVAS BACKGROUND ── */
+    #bg-canvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 0; opacity: 0.6;
+    }
+
+    /* ── CURSOR GLOW FOLLOWER ── */
+    #cursor-glow {
+      position: fixed; top: 0; left: 0; width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,245,160,0.07) 0%, transparent 65%);
+      pointer-events: none; z-index: 1; transform: translate(-50%,-50%);
+      transition: left 0.08s linear, top 0.08s linear;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 60px;
+      background: rgba(10,10,15,0); backdrop-filter: blur(0px);
+      border-bottom: 1px solid transparent;
+      transition: background 0.4s, backdrop-filter 0.4s, border-color 0.4s;
+    }
+    nav.scrolled {
+      background: rgba(10,10,15,0.92); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: var(--mono); font-size: 15px; font-weight: 500;
+      letter-spacing: 0.14em; color: var(--mint); text-decoration: none;
+      position: relative; z-index: 1;
+    }
+    .nav-links { display: flex; gap: 36px; list-style: none; }
+    .nav-links a {
+      font-size: 13px; color: var(--muted); text-decoration: none;
+      letter-spacing: 0.04em; transition: color 0.2s; position: relative;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+      height: 1px; background: var(--mint); transform: scaleX(0);
+      transition: transform 0.25s ease; transform-origin: left;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a:hover::after { transform: scaleX(1); }
+    .nav-cta {
+      font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+      color: var(--bg); background: var(--mint); border: none;
+      padding: 10px 24px; text-decoration: none;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+      position: relative; overflow: hidden;
+    }
+    .nav-cta::before {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(255,255,255,0.15); transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+    .nav-cta:hover::before { transform: translateX(0); }
+    .nav-cta:hover { box-shadow: 0 0 24px rgba(0,245,160,0.4); transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      justify-content: center; padding: 140px 60px 100px;
+      border-bottom: 1px solid var(--border);
+      position: relative; overflow: hidden; z-index: 2;
+    }
+    .hero-eyebrow {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+      color: var(--mint); margin-bottom: 28px; text-transform: uppercase;
+      opacity: 0; transform: translateY(16px);
+      animation: fadeUp 0.7s 0.2s ease forwards;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .hero-eyebrow::before {
+      content: ''; display: inline-block; width: 28px; height: 1px;
+      background: var(--mint);
+    }
+    .hero-headline {
+      font-family: var(--serif); font-size: clamp(56px, 6.5vw, 96px);
+      line-height: 1.04; font-weight: 400; max-width: 860px; margin-bottom: 32px;
+      opacity: 0; transform: translateY(24px);
+      animation: fadeUp 0.8s 0.4s ease forwards;
+    }
+    .hero-headline em { font-style: italic; color: var(--mint); }
+    .hero-sub {
+      font-size: 17px; color: var(--muted); max-width: 460px;
+      line-height: 1.75; margin-bottom: 52px;
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp 0.7s 0.6s ease forwards;
+    }
+    .hero-actions {
+      display: flex; align-items: center; gap: 28px;
+      opacity: 0; transform: translateY(16px);
+      animation: fadeUp 0.7s 0.75s ease forwards;
+    }
+    .btn-primary {
+      font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
+      color: var(--bg); background: var(--mint); padding: 15px 36px;
+      text-decoration: none; position: relative; overflow: hidden;
+      transition: box-shadow 0.25s, transform 0.15s;
+    }
+    .btn-primary::after {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(0,0,0,0.1); transform: scaleX(0);
+      transform-origin: right; transition: transform 0.3s ease;
+    }
+    .btn-primary:hover { box-shadow: 0 0 32px rgba(0,245,160,0.5); transform: translateY(-2px); }
+    .btn-ghost {
+      font-size: 13px; color: var(--muted); text-decoration: none;
+      letter-spacing: 0.04em; padding-bottom: 2px;
+      border-bottom: 1px solid var(--border);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ── LIVE TICKER ── */
+    .ticker-wrap {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      border-top: 1px solid var(--border); overflow: hidden;
+      background: rgba(10,10,15,0.6); backdrop-filter: blur(8px);
+    }
+    .ticker-track {
+      display: flex; gap: 0; white-space: nowrap;
+      animation: ticker 28s linear infinite;
+    }
+    .ticker-item {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+      color: var(--muted); padding: 14px 40px; flex-shrink: 0;
+      border-right: 1px solid var(--border);
+    }
+    .ticker-item span { color: var(--mint); }
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ── STAT ROW ── */
+    .hero-stat-row {
+      display: flex; gap: 0; margin-top: 90px;
+      border-top: 1px solid var(--border);
+      opacity: 0; animation: fadeUp 0.7s 1s ease forwards;
+    }
+    .hero-stat {
+      padding: 32px 48px 28px 0; margin-right: 48px;
+      border-right: 1px solid var(--border); cursor: default;
+      transition: transform 0.2s;
+    }
+    .hero-stat:last-child { border-right: none; }
+    .hero-stat:hover { transform: translateY(-3px); }
+    .hero-stat-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 8px;
+    }
+    .hero-stat-value {
+      font-family: var(--mono); font-size: 32px; font-weight: 500; color: var(--text);
+    }
+    .hero-stat-value span { color: var(--mint); }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal {
+      opacity: 0; transform: translateY(32px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-left {
+      opacity: 0; transform: translateX(-32px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal-left.visible { opacity: 1; transform: translateX(0); }
+
+    /* ── SECTIONS ── */
+    section { padding: 110px 60px; border-bottom: 1px solid var(--border); position: relative; z-index: 2; }
+    .section-eyebrow {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+      color: var(--mint); text-transform: uppercase; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-eyebrow::before { content: ''; width: 20px; height: 1px; background: var(--mint); }
+    .section-heading {
+      font-family: var(--serif); font-size: clamp(38px, 4vw, 58px);
+      font-weight: 400; line-height: 1.08; margin-bottom: 20px;
+    }
+    .section-heading em { font-style: italic; color: var(--mint); }
+    .section-body { font-size: 16px; color: var(--muted); max-width: 500px; line-height: 1.8; }
+
+    /* ── PROBLEM ── */
+    .problem-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+      background: var(--border); margin-top: 64px;
+      border: 1px solid var(--border);
+    }
+    .problem-cell {
+      background: var(--card); padding: 40px;
+      transition: background 0.3s, transform 0.3s;
+      position: relative; overflow: hidden;
+    }
+    .problem-cell::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--mint); transform: scaleX(0); transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .problem-cell:hover::before { transform: scaleX(1); }
+    .problem-cell:hover { background: #1C1C28; }
+    .problem-num {
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+      letter-spacing: 0.1em; margin-bottom: 18px;
+    }
+    .problem-title { font-size: 17px; font-weight: 500; margin-bottom: 12px; }
+    .problem-desc { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    /* ── FEATURES ── */
+    .features-layout {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 72px; align-items: start; margin-top: 64px;
+    }
+    .feature-item {
+      padding: 28px 0; border-bottom: 1px solid var(--border);
+      transition: padding-left 0.3s ease;
+    }
+    .feature-item:first-child { border-top: 1px solid var(--border); }
+    .feature-item:hover { padding-left: 12px; }
+    .feature-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .feature-item-title { font-size: 15px; font-weight: 500; }
+    .feature-item-tag {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+      color: var(--mint); background: rgba(0,245,160,0.1); padding: 3px 10px;
+      text-transform: uppercase;
+    }
+    .feature-item-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    /* ── READINESS CARD ── */
+    .readiness-card {
+      background: var(--card); border: 1px solid var(--border); padding: 36px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .readiness-card:hover { border-color: rgba(0,245,160,0.3); box-shadow: 0 0 40px rgba(0,245,160,0.08); }
+    .readiness-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--mint), transparent);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.3; } 50% { opacity: 1; }
+    }
+    .readiness-card-label {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 24px;
+    }
+    .readiness-score-ring {
+      position: relative; width: 140px; height: 140px; margin: 0 auto 24px;
+    }
+    .readiness-score-ring svg { transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+    .ring-fill {
+      fill: none; stroke: var(--mint); stroke-width: 8; stroke-linecap: round;
+      stroke-dasharray: 339; stroke-dashoffset: 339;
+      transition: stroke-dashoffset 2s cubic-bezier(.4,0,.2,1);
+      filter: drop-shadow(0 0 6px rgba(0,245,160,0.6));
+    }
+    .readiness-number {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      font-family: var(--mono); font-size: 38px; font-weight: 500;
+    }
+    .readiness-verdict {
+      font-family: var(--serif); font-size: 22px; font-style: italic;
+      color: var(--mint); text-align: center; margin-bottom: 24px;
+    }
+    .readiness-metrics {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 1px; background: var(--border); border: 1px solid var(--border);
+    }
+    .readiness-metric { background: var(--surface); padding: 16px 14px; text-align: center; }
+    .readiness-metric-label {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
+    }
+    .readiness-metric-val { font-family: var(--mono); font-size: 18px; font-weight: 500; }
+    .readiness-metric-val.good { color: var(--mint); }
+    .readiness-metric-val.warn { color: #F5A623; }
+    .today-recommendation {
+      margin-top: 20px; padding: 18px 20px;
+      background: rgba(0,245,160,0.04); border-left: 2px solid var(--mint);
+    }
+    .today-rec-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+      color: var(--mint); text-transform: uppercase; margin-bottom: 8px;
+    }
+    .today-rec-text { font-size: 14px; color: var(--text); line-height: 1.65; }
+
+    /* ── COMPETITION ── */
+    .comp-table { width: 100%; border-collapse: collapse; margin-top: 56px; font-size: 14px; }
+    .comp-table th {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); text-align: left;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+    }
+    .comp-table td {
+      padding: 18px 20px; border-bottom: 1px solid var(--border);
+      color: var(--muted); transition: background 0.2s;
+    }
+    .comp-table td:first-child { font-weight: 500; color: var(--text); }
+    .comp-table tr:not(.highlight):hover td { background: rgba(255,255,255,0.02); }
+    .comp-table tr.highlight td {
+      background: rgba(0,245,160,0.04); color: var(--text);
+    }
+    .comp-table tr.highlight td:first-child {
+      color: var(--mint); font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
+    }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+    .dot.yes { background: var(--mint); box-shadow: 0 0 6px rgba(0,245,160,0.6); }
+    .dot.no { background: #2A2A3A; }
+    .dot.partial { background: #F5A623; }
+
+    /* ── PRICING ── */
+    .model-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px;
+      background: var(--border); border: 1px solid var(--border); margin-top: 56px;
+    }
+    .model-cell {
+      background: var(--card); padding: 44px 36px;
+      transition: background 0.3s, transform 0.3s;
+      position: relative; overflow: hidden;
+    }
+    .model-cell:hover { background: #1C1C28; transform: translateY(-4px); z-index: 1; }
+    .model-cell.featured {
+      background: rgba(0,245,160,0.06); border-top: 2px solid var(--mint); margin-top: -1px;
+    }
+    .model-cell.featured:hover { background: rgba(0,245,160,0.09); }
+    .model-tier {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
+    }
+    .model-price { font-family: var(--mono); font-size: 40px; font-weight: 500; }
+    .model-price sup { font-size: 18px; vertical-align: super; }
+    .model-price sub { font-size: 14px; color: var(--muted); }
+    .model-cell.featured .model-price { color: var(--mint); }
+    .model-desc {
+      font-size: 14px; color: var(--muted); line-height: 1.7;
+      margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border);
+    }
+
+    /* ── STACK ── */
+    .stack-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 1px;
+      background: var(--border); border: 1px solid var(--border); margin-top: 56px;
+    }
+    .stack-cell {
+      background: var(--card); padding: 32px;
+      transition: background 0.25s; position: relative; overflow: hidden;
+    }
+    .stack-cell::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: var(--mint); transform: scaleX(0); transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .stack-cell:hover::after { transform: scaleX(1); }
+    .stack-cell:hover { background: #1C1C28; }
+    .stack-role {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    }
+    .stack-name { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+    .stack-note { font-size: 13px; color: var(--muted); line-height: 1.55; }
+    .stack-cost { font-family: var(--mono); font-size: 12px; color: var(--mint); margin-top: 14px; }
+
+    /* ── MAGNETIC BUTTON WRAPPER ── */
+    .mag-wrap { display: inline-block; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 56px 60px; display: flex; align-items: center;
+      justify-content: space-between; position: relative; z-index: 2;
+    }
+    .footer-logo { font-family: var(--mono); font-size: 14px; letter-spacing: 0.14em; color: var(--mint); }
+    .footer-note { font-size: 13px; color: var(--muted); }
+
+    /* ── KEYFRAMES ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── SCANLINE OVERLAY ── */
+    .scanlines {
+      position: fixed; inset: 0; pointer-events: none; z-index: 3;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+      );
+    }
+
+    /* ── NUMBER COUNTER ── */
+    .count-up { display: inline; }
+
+    /* ── GLITCH TEXT (hero) ── */
+    .glitch {
+      position: relative; display: inline-block;
+    }
+    .glitch::before, .glitch::after {
+      content: attr(data-text); position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; font-family: inherit; font-size: inherit;
+      font-style: inherit; color: var(--mint);
+    }
+    .glitch::before {
+      animation: glitch1 4s infinite 2s;
+      clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+      opacity: 0;
+    }
+    .glitch::after {
+      animation: glitch2 4s infinite 2.1s;
+      clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+      opacity: 0; color: #fff;
+    }
+    @keyframes glitch1 {
+      0%,94%,100% { opacity:0; transform:translateX(0); }
+      95% { opacity:0.8; transform:translateX(-4px); }
+      97% { opacity:0.8; transform:translateX(4px); }
+    }
+    @keyframes glitch2 {
+      0%,94%,100% { opacity:0; transform:translateX(0); }
+      95% { opacity:0.6; transform:translateX(4px); }
+      97% { opacity:0.6; transform:translateX(-4px); }
+    }
+
+    /* ── GRID LINES ── */
+    .hero-grid {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,245,160,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,160,0.03) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+    }
+
+    /* ── MAGNETIC BUTTON ── */
+    a, button { cursor: none; }
+  </style>
+</head>
+<body>
+
+  <!-- CURSOR -->
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+  <div id="cursor-glow"></div>
+  <div class="scanlines"></div>
+
+  <!-- PARTICLE CANVAS -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- NAV -->
+  <nav id="main-nav">
+    <a href="#" class="nav-logo">FITFLOW</a>
+    <ul class="nav-links">
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#competition">Why Us</a></li>
+      <li><a href="#model">Pricing</a></li>
+    </ul>
+    <a href="#model" class="nav-cta mag-wrap">Get Early Access</a>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-grid"></div>
+    <p class="hero-eyebrow">Launching Q1 2027</p>
+    <h1 class="hero-headline">
+      One app.<br>
+      Your whole<br>
+      <em class="glitch" data-text="fitness picture.">fitness picture.</em>
+    </h1>
+    <p class="hero-sub">
+      FitFlow tells you exactly what to do today — workout, nutrition, and recovery, unified by adaptive AI. No app stack. No guesswork. No shame.
+    </p>
+    <div class="hero-actions">
+      <a href="#model" class="btn-primary mag-wrap">Join the Waitlist</a>
+      <a href="#problem" class="btn-ghost">See the problem we're solving →</a>
+    </div>
+    <div class="hero-stat-row">
+      <div class="hero-stat">
+        <div class="hero-stat-label">Fitness app market by 2033</div>
+        <div class="hero-stat-value"><span class="count-up" data-target="33">0</span>B</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Users quit within 30 days</div>
+        <div class="hero-stat-value"><span class="count-up" data-target="91">0</span>%</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Apps the avg user juggles</div>
+        <div class="hero-stat-value"><span style="color:var(--mint)">3–4</span></div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Our target retention at day 30</div>
+        <div class="hero-stat-value"><span style="color:var(--mint)">&gt;30</span>%</div>
+      </div>
+    </div>
+
+    <!-- TICKER -->
+    <div class="ticker-wrap">
+      <div class="ticker-track">
+        <div class="ticker-item">Market size <span>$10.6B</span> in 2024</div>
+        <div class="ticker-item">MyFitnessPal <span>200M</span> registered users</div>
+        <div class="ticker-item">Strava <span>150M</span> users · growing 2M/mo</div>
+        <div class="ticker-item">Fitness app downloads <span>5B+</span> in 2025</div>
+        <div class="ticker-item">Industry day-30 retention <span>8.5%</span></div>
+        <div class="ticker-item">FitFlow target retention <span>&gt;30%</span></div>
+        <div class="ticker-item">Seed round target <span>$500K</span></div>
+        <div class="ticker-item">Year 1 ARR target <span>$6M</span></div>
+        <!-- duplicate for seamless loop -->
+        <div class="ticker-item">Market size <span>$10.6B</span> in 2024</div>
+        <div class="ticker-item">MyFitnessPal <span>200M</span> registered users</div>
+        <div class="ticker-item">Strava <span>150M</span> users · growing 2M/mo</div>
+        <div class="ticker-item">Fitness app downloads <span>5B+</span> in 2025</div>
+        <div class="ticker-item">Industry day-30 retention <span>8.5%</span></div>
+        <div class="ticker-item">FitFlow target retention <span>&gt;30%</span></div>
+        <div class="ticker-item">Seed round target <span>$500K</span></div>
+        <div class="ticker-item">Year 1 ARR target <span>$6M</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROBLEM -->
+  <section id="problem">
+    <p class="section-eyebrow reveal">The Problem</p>
+    <h2 class="section-heading reveal">The market is crowded.<br><em>And broken.</em></h2>
+    <p class="section-body reveal">Every top app owns one lane. None of them talk to each other. Users end up managing a fragmented stack — and quitting when the guilt kicks in.</p>
+    <div class="problem-grid">
+      <div class="problem-cell reveal" style="transition-delay:0.05s">
+        <div class="problem-num">01</div>
+        <div class="problem-title">Fragmentation</div>
+        <div class="problem-desc">Strava tracks your run. MyFitnessPal logs your food. WHOOP monitors your sleep. None of this data connects. You're left to make sense of it alone.</div>
+      </div>
+      <div class="problem-cell reveal" style="transition-delay:0.12s">
+        <div class="problem-num">02</div>
+        <div class="problem-title">Shame mechanics</div>
+        <div class="problem-desc">Missed a streak? Logged too many calories? Apps punish gaps instead of building resilience. Research shows this triggers guilt, avoidance, and dropout.</div>
+      </div>
+      <div class="problem-cell reveal" style="transition-delay:0.19s">
+        <div class="problem-num">03</div>
+        <div class="problem-title">No real AI</div>
+        <div class="problem-desc">Most "AI coaches" are motivational quotes on a timer. They don't know you're under-fuelled, under-slept, or overdue for a rest day. FitFlow does.</div>
+      </div>
+      <div class="problem-cell reveal" style="transition-delay:0.26s">
+        <div class="problem-num">04</div>
+        <div class="problem-title">Decision fatigue</div>
+        <div class="problem-desc">Apps present libraries. They don't answer the only question that matters every morning: what should I actually do today?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <p class="section-eyebrow reveal">The Solution</p>
+    <h2 class="section-heading reveal">Built around<br><em>your whole life.</em></h2>
+    <p class="section-body reveal">Four pillars that share data in real time, so every recommendation is genuinely personal.</p>
+    <div class="features-layout">
+      <div class="feature-list reveal-left">
+        <div class="feature-item">
+          <div class="feature-item-header">
+            <div class="feature-item-title">Adaptive AI Coach</div>
+            <div class="feature-item-tag">Core</div>
+          </div>
+          <div class="feature-item-desc">Adjusts volume, intensity, and modality daily based on HRV, sleep, nutrition, and soreness — not a preset calendar.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-header">
+            <div class="feature-item-title">Integrated Nutrition</div>
+            <div class="feature-item-tag">Core</div>
+          </div>
+          <div class="feature-item-desc">Barcode, photo, and voice logging. Your food data feeds directly into today's training recommendation.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-header">
+            <div class="feature-item-title">Recovery Scoring</div>
+            <div class="feature-item-tag">Core</div>
+          </div>
+          <div class="feature-item-desc">A readiness score every morning using Apple Watch, Garmin, Oura, or WHOOP data. Tells you when to push and when to back off.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-header">
+            <div class="feature-item-title">No-Shame Design</div>
+            <div class="feature-item-tag">Philosophy</div>
+          </div>
+          <div class="feature-item-desc">No streaks. No calorie guilt. Progress is measured in consistency trends over time, not daily perfection scores.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-header">
+            <div class="feature-item-title">Beginner Pathway</div>
+            <div class="feature-item-tag">Access</div>
+          </div>
+          <div class="feature-item-desc">Structured onboarding for users with no gym experience. Removes the barrier every other app ignores.</div>
+        </div>
+      </div>
+
+      <!-- READINESS CARD -->
+      <div class="reveal">
+        <div class="readiness-card">
+          <div class="readiness-card-label">Today's Readiness — Thu 18 Jun</div>
+          <div class="readiness-score-ring">
+            <svg viewBox="0 0 120 120" width="140" height="140">
+              <circle class="ring-bg" cx="60" cy="60" r="54"/>
+              <circle class="ring-fill" cx="60" cy="60" r="54" id="ringArc"/>
+            </svg>
+            <div class="readiness-number">84</div>
+          </div>
+          <div class="readiness-verdict">Ready to push.</div>
+          <div class="readiness-metrics">
+            <div class="readiness-metric">
+              <div class="readiness-metric-label">Sleep</div>
+              <div class="readiness-metric-val good">7.4h</div>
+            </div>
+            <div class="readiness-metric">
+              <div class="readiness-metric-label">HRV</div>
+              <div class="readiness-metric-val good">+12%</div>
+            </div>
+            <div class="readiness-metric">
+              <div class="readiness-metric-label">Protein</div>
+              <div class="readiness-metric-val warn">78%</div>
+            </div>
+          </div>
+          <div class="today-recommendation">
+            <div class="today-rec-label">Recommendation</div>
+            <div class="today-rec-text">Lower body strength, moderate volume. Hit your protein target before training — you're 34g short from yesterday.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPETITION -->
+  <section id="competition">
+    <p class="section-eyebrow reveal">Competitive Landscape</p>
+    <h2 class="section-heading reveal">Everyone owns<br><em>one lane.</em></h2>
+    <p class="section-body reveal">The top five apps each solve one problem well. FitFlow solves all of them together.</p>
+    <table class="comp-table reveal">
+      <thead>
+        <tr>
+          <th>App</th><th>Workout</th><th>Nutrition</th><th>Recovery</th><th>Adaptive AI</th><th>No-shame design</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Strava</td>
+          <td><span class="dot partial"></span>Cardio only</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot no"></span>No</td>
+          <td><span class="dot no"></span>No</td>
+        </tr>
+        <tr>
+          <td>MyFitnessPal</td>
+          <td><span class="dot partial"></span>Basic</td>
+          <td><span class="dot yes"></span>Best in class</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot no"></span>No</td>
+          <td><span class="dot no"></span>No</td>
+        </tr>
+        <tr>
+          <td>Nike Training Club</td>
+          <td><span class="dot yes"></span>Strong library</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot no"></span>No</td>
+          <td><span class="dot partial"></span>Partial</td>
+        </tr>
+        <tr>
+          <td>Peloton</td>
+          <td><span class="dot yes"></span>Live classes</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot no"></span>No</td>
+          <td><span class="dot no"></span>No</td>
+        </tr>
+        <tr>
+          <td>Apple Fitness+</td>
+          <td><span class="dot yes"></span>Good variety</td>
+          <td><span class="dot no"></span>None</td>
+          <td><span class="dot partial"></span>Basic</td>
+          <td><span class="dot no"></span>No</td>
+          <td><span class="dot partial"></span>Partial</td>
+        </tr>
+        <tr class="highlight">
+          <td>FitFlow</td>
+          <td><span class="dot yes"></span>Adaptive</td>
+          <td><span class="dot yes"></span>Integrated</td>
+          <td><span class="dot yes"></span>First-class</td>
+          <td><span class="dot yes"></span>Yes</td>
+          <td><span class="dot yes"></span>Yes</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- PRICING -->
+  <section id="model">
+    <p class="section-eyebrow reveal">Pricing</p>
+    <h2 class="section-heading reveal">Simple.<br><em>Fair.</em></h2>
+    <p class="section-body reveal">Free to start. One upgrade for everything. No feature gates, no upsells.</p>
+    <div class="model-row reveal">
+      <div class="model-cell">
+        <div class="model-tier">Free</div>
+        <div class="model-price"><sup>$</sup>0</div>
+        <div class="model-desc">Basic workout logging, 7-day AI trial, wearable sync. Start here — no card required.</div>
+      </div>
+      <div class="model-cell featured">
+        <div class="model-tier">Pro — Most Popular</div>
+        <div class="model-price"><sup>$</sup>9.99<sub>/mo</sub></div>
+        <div class="model-desc">Full adaptive AI coaching, nutrition tracking, recovery scoring, and no-shame progress dashboard. Everything, unlocked.</div>
+      </div>
+      <div class="model-cell">
+        <div class="model-tier">Annual</div>
+        <div class="model-price"><sup>$</sup>79<sub>/yr</sub></div>
+        <div class="model-desc">Same as Pro. Two months free. Best value for users who are serious about the long game.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STACK -->
+  <section id="stack">
+    <p class="section-eyebrow reveal">How We're Building It</p>
+    <h2 class="section-heading reveal">Lean stack.<br><em>Zero waste.</em></h2>
+    <p class="section-body reveal">Two founders. One codebase. Under $500 to launch. Built for speed, not overhead.</p>
+    <div class="stack-grid reveal">
+      <div class="stack-cell">
+        <div class="stack-role">Code Editor</div>
+        <div class="stack-name">Cursor</div>
+        <div class="stack-note">AI-assisted development — primary build environment</div>
+        <div class="stack-cost">Free</div>
+      </div>
+      <div class="stack-cell">
+        <div class="stack-role">App Framework</div>
+        <div class="stack-name">Expo + React Native</div>
+        <div class="stack-note">One codebase for iOS and Android</div>
+        <div class="stack-cost">Free</div>
+      </div>
+      <div class="stack-cell">
+        <div class="stack-role">Backend</div>
+        <div class="stack-name">Supabase</div>
+        <div class="stack-note">Auth, database, and storage out of the box</div>
+        <div class="stack-cost">Free tier</div>
+      </div>
+      <div class="stack-cell">
+        <div class="stack-role">AI Engine</div>
+        <div class="stack-name">Anthropic API</div>
+        <div class="stack-note">Powers the adaptive coaching layer</div>
+        <div class="stack-cost">~$50–150/mo</div>
+      </div>
+      <div class="stack-cell">
+        <div class="stack-role">Distribution</div>
+        <div class="stack-name">Apple TestFlight</div>
+        <div class="stack-note">Beta testing before App Store launch</div>
+        <div class="stack-cost">Free</div>
+      </div>
+      <div class="stack-cell">
+        <div class="stack-role">Subscriptions</div>
+        <div class="stack-name">RevenueCat</div>
+        <div class="stack-note">App Store billing, handled cleanly</div>
+        <div class="stack-cost">Free to $2.5K MRR</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">FITFLOW</div>
+    <div class="footer-note">Launching Q1 2027 &nbsp;·&nbsp; Confidential — internal review only</div>
+  </footer>
+
+  <script>
+  (() => {
+    /* ── CURSOR ── */
+    const dot = document.getElementById('cursor-dot');
+    const ring = document.getElementById('cursor-ring');
+    const glow = document.getElementById('cursor-glow');
+    let mx = window.innerWidth/2, my = window.innerHeight/2;
+    let rx = mx, ry = my;
+
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+      glow.style.left = mx + 'px'; glow.style.top = my + 'px';
+    });
+
+    // Ring follows with lag
+    (function animRing() {
+      rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
+      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+      requestAnimationFrame(animRing);
+    })();
+
+    document.querySelectorAll('a, button, .problem-cell, .feature-item, .model-cell, .stack-cell').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+    });
+    document.addEventListener('mousedown', () => document.body.classList.add('cursor-click'));
+    document.addEventListener('mouseup', () => document.body.classList.remove('cursor-click'));
+
+    /* ── MAGNETIC BUTTONS ── */
+    document.querySelectorAll('.mag-wrap').forEach(wrap => {
+      const btn = wrap.querySelector('a, button') || wrap;
+      wrap.addEventListener('mousemove', e => {
+        const r = wrap.getBoundingClientRect();
+        const cx = r.left + r.width/2, cy = r.top + r.height/2;
+        const dx = (e.clientX - cx) * 0.28, dy = (e.clientY - cy) * 0.28;
+        btn.style.transform = `translate(${dx}px, ${dy}px)`;
+      });
+      wrap.addEventListener('mouseleave', () => {
+        btn.style.transform = 'translate(0,0)';
+        btn.style.transition = 'transform 0.4s cubic-bezier(.25,.46,.45,.94), box-shadow 0.25s';
+      });
+      wrap.addEventListener('mouseenter', () => {
+        btn.style.transition = 'transform 0.1s linear, box-shadow 0.25s';
+      });
+    });
+
+    /* ── NAV SCROLL ── */
+    const nav = document.getElementById('main-nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    /* ── PARTICLE CANVAS ── */
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, particles = [];
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    class Particle {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * W;
+        this.y = Math.random() * H;
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.vy = (Math.random() - 0.5) * 0.3;
+        this.r = Math.random() * 1.2 + 0.3;
+        this.alpha = Math.random() * 0.5 + 0.1;
+        this.life = 0;
+        this.maxLife = 300 + Math.random() * 400;
+      }
+      update() {
+        // subtle attraction to cursor
+        const dx = mx - this.x, dy = my - this.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 180) {
+          this.vx += dx/dist * 0.012;
+          this.vy += dy/dist * 0.012;
+        }
+        this.vx *= 0.99; this.vy *= 0.99;
+        this.x += this.vx; this.y += this.vy;
+        this.life++;
+        if (this.life > this.maxLife || this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+      }
+      draw() {
+        const fade = Math.min(this.life/40, 1, (this.maxLife - this.life)/40);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(0,245,160,${this.alpha * fade})`;
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+    // Connection lines between nearby particles
+    function drawConnections() {
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i+1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d < 90) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(0,245,160,${0.08*(1-d/90)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    (function animParticles() {
+      ctx.clearRect(0, 0, W, H);
+      drawConnections();
+      particles.forEach(p => { p.update(); p.draw(); });
+      requestAnimationFrame(animParticles);
+    })();
+
+    /* ── SCROLL REVEAL ── */
+    const revealEls = document.querySelectorAll('.reveal, .reveal-left');
+    const revealObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revealObs.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => revealObs.observe(el));
+
+    /* ── READINESS RING ── */
+    const ringArc = document.getElementById('ringArc');
+    const ringObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          setTimeout(() => { ringArc.style.strokeDashoffset = '54'; }, 300);
+          ringObs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    ringObs.observe(document.querySelector('.readiness-score-ring'));
+
+    /* ── COUNT UP ── */
+    const countEls = document.querySelectorAll('.count-up[data-target]');
+    const countObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        const el = e.target;
+        const target = parseInt(el.dataset.target);
+        let start = 0;
+        const dur = 1600;
+        const step = timestamp => {
+          if (!start) start = timestamp;
+          const p = Math.min((timestamp - start)/dur, 1);
+          const ease = 1 - Math.pow(1-p, 3);
+          el.textContent = Math.round(ease * target);
+          if (p < 1) requestAnimationFrame(step);
+          else el.textContent = target;
+        };
+        requestAnimationFrame(step);
+        countObs.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+    countEls.forEach(el => countObs.observe(el));
+
+    /* ── PARALLAX HERO GRID ── */
+    const heroGrid = document.querySelector('.hero-grid');
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY;
+      if (heroGrid) heroGrid.style.transform = `translateY(${y * 0.3}px)`;
+    });
+
+  })();
+  </script>
+</body>
+</html>
