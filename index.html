@@ -308,7 +308,8 @@
     .today-rec-text { font-size: 14px; color: var(--text); line-height: 1.65; }
 
     /* ── COMPETITION ── */
-    .comp-table { width: 100%; border-collapse: collapse; margin-top: 56px; font-size: 14px; }
+    .comp-table-wrap { margin-top: 56px; }
+    .comp-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .comp-table th {
       font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
       text-transform: uppercase; color: var(--muted); text-align: left;
@@ -319,7 +320,7 @@
       color: var(--muted); transition: background 0.2s;
     }
     .comp-table td:first-child { font-weight: 500; color: var(--text); }
-    .comp-table tr:not(.highlight):hover td { background: rgba(255,255,255,0.02); }
+    .comp-table tr:not(.highlight):hover td { background: rgba(0,0,0,0.03); }
     .comp-table tr.highlight td {
       background: rgba(212,86,42,0.05); color: var(--text);
     }
@@ -455,6 +456,46 @@
     }
 
     /* ── MAGNETIC BUTTON ── */
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 24px; }
+      .nav-links { display: none; }
+      .nav-cta { padding: 9px 18px; font-size: 11px; }
+
+      .hero { padding: 96px 24px 72px; }
+      .hero-sub { font-size: 15px; max-width: 100%; }
+      .hero-actions { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .btn-primary { width: 100%; text-align: center; padding: 15px 24px; }
+
+      .hero-stat-row { flex-wrap: wrap; margin-top: 48px; gap: 0; }
+      .hero-stat { min-width: calc(50% - 24px); padding: 20px 16px 20px 0; margin-right: 0; border-right: none; border-bottom: 1px solid var(--border); }
+      .hero-stat:nth-child(odd) { padding-right: 24px; border-right: 1px solid var(--border); }
+      .hero-stat:last-child, .hero-stat:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+      .hero-stat-value { font-size: 26px; }
+
+      section { padding: 64px 24px; }
+      .section-heading { font-size: clamp(30px, 8vw, 44px); }
+
+      .problem-grid { grid-template-columns: 1fr; gap: 10px; }
+
+      .features-layout { grid-template-columns: 1fr; gap: 40px; }
+
+      .comp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+      .comp-table { min-width: 560px; }
+
+      .model-row { grid-template-columns: 1fr; gap: 10px; }
+      .model-cell.featured { margin-top: 0; }
+
+      .stack-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+      footer { flex-direction: column; align-items: flex-start; gap: 10px; padding: 40px 24px; }
+    }
+
+    @media (max-width: 480px) {
+      .stack-grid { grid-template-columns: 1fr; }
+      .readiness-metrics { grid-template-columns: 1fr 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -648,7 +689,8 @@
     <p class="section-eyebrow reveal">Competitive Landscape</p>
     <h2 class="section-heading reveal">Everyone owns<br><em>one lane.</em></h2>
     <p class="section-body reveal">The top five apps each solve one problem well. FitFlow solves all of them together.</p>
-    <table class="comp-table reveal">
+    <div class="comp-table-wrap reveal">
+    <table class="comp-table">
       <thead>
         <tr>
           <th>App</th><th>Workout</th><th>Nutrition</th><th>Recovery</th><th>Adaptive AI</th><th>No-shame design</th>
@@ -705,6 +747,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
   </section>
 
   <!-- PRICING -->
