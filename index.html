@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -445,6 +446,20 @@
       97% { opacity:0.6; transform:translateX(-4px); }
     }
 
+    /* ── SPHERE CANVAS ── */
+    #sphere-canvas {
+      position: absolute;
+      top: 50%;
+      right: -60px;
+      transform: translateY(-52%);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.88;
+    }
+    @media (max-width: 900px) {
+      #sphere-canvas { display: none; }
+    }
+
     /* ── GRID LINES ── */
     .hero-grid {
       position: absolute; inset: 0; pointer-events: none;
@@ -520,6 +535,7 @@
   <!-- HERO -->
   <div class="hero">
     <div class="hero-grid"></div>
+    <canvas id="sphere-canvas"></canvas>
     <p class="hero-eyebrow">Launching Q1 2027</p>
     <h1 class="hero-headline">
       One app.<br>
@@ -931,6 +947,68 @@
       const y = window.scrollY;
       if (heroGrid) heroGrid.style.transform = `translateY(${y * 0.3}px)`;
     });
+
+    /* ── THREE.JS PARTICLE SPHERE ── */
+    (function() {
+      const sphereCanvas = document.getElementById('sphere-canvas');
+      if (!sphereCanvas || typeof THREE === 'undefined') return;
+
+      const SIZE = 560;
+      const renderer = new THREE.WebGLRenderer({ canvas: sphereCanvas, alpha: true, antialias: false });
+      renderer.setSize(SIZE, SIZE);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(0x000000, 0);
+
+      const scene = new THREE.Scene();
+      const cam = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+      cam.position.z = 3.5;
+
+      // Fibonacci sphere — 2000 evenly distributed dots
+      const N = 2000;
+      const pos = new Float32Array(N * 3);
+      const R = 1.5;
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < N; i++) {
+        const y = 1 - (i / (N - 1)) * 2;
+        const r = Math.sqrt(1 - y * y);
+        const theta = goldenAngle * i;
+        pos[i*3]   = R * r * Math.cos(theta);
+        pos[i*3+1] = R * y;
+        pos[i*3+2] = R * r * Math.sin(theta);
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+      const mat = new THREE.PointsMaterial({
+        color: 0x00F5A0,
+        size: 0.026,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.82,
+      });
+
+      const points = new THREE.Points(geo, mat);
+      scene.add(points);
+
+      let tiltX = 0, tiltY = 0, baseY = 0;
+      let curX = 0, curY = 0;
+
+      document.addEventListener('mousemove', e => {
+        tiltX = ((e.clientY / window.innerHeight) - 0.5) * -0.5;
+        tiltY = ((e.clientX / window.innerWidth) - 0.5) * 0.6;
+      });
+
+      (function animSphere() {
+        requestAnimationFrame(animSphere);
+        baseY += 0.004;
+        curX += (tiltX - curX) * 0.04;
+        curY += (baseY + tiltY - curY) * 0.04;
+        points.rotation.x = curX;
+        points.rotation.y = curY;
+        renderer.render(scene, cam);
+      })();
+    })();
 
   })();
   </script>
