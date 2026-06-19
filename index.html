@@ -998,6 +998,7 @@
   let _lenis = null;
   if (!_pRM && window.Lenis) {
     _lenis = new window.Lenis({ lerp: 0.075, smoothTouch: false });
+    (function lenisRaf(t) { _lenis.raf(t); requestAnimationFrame(lenisRaf); })(performance.now());
   }
 
   // ─── MAIN IIFE ───────────────────────────────────────────────────────────────
@@ -1423,7 +1424,6 @@
 
     if (_lenis) {
       _lenis.on('scroll', ScrollTrigger.update);
-      gsap.ticker.add(time => _lenis.raf(time * 1000));
       gsap.ticker.lagSmoothing(0);
     }
 
