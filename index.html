@@ -178,10 +178,10 @@
     .hero-stat-value span { color: var(--mint); }
 
     /* ── SCROLL REVEAL ── */
-    .reveal { opacity: 0; transform: translateY(28px); filter: blur(6px); }
-    .reveal.visible { opacity: 1; transform: none; filter: blur(0); }
-    .reveal-left { opacity: 0; transform: translateX(-28px); filter: blur(6px); }
-    .reveal-left.visible { opacity: 1; transform: none; filter: blur(0); }
+    .reveal { opacity: 0; transform: translateY(28px); }
+    .reveal.visible { opacity: 1; transform: none; }
+    .reveal-left { opacity: 0; transform: translateX(-28px); }
+    .reveal-left.visible { opacity: 1; transform: none; }
 
     /* ── SECTIONS ── */
     section { padding: 110px 60px; border-bottom: 1px solid var(--border); position: relative; z-index: 2; }
@@ -496,8 +496,8 @@
 
     /* ── KEYFRAMES ── */
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(22px); filter: blur(5px); }
-      to   { opacity: 1; transform: translateY(0);   filter: blur(0);   }
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     /* ── SCANLINE OVERLAY ── */
@@ -540,7 +540,7 @@
 
     /* ── PREFERS-REDUCED-MOTION ── */
     @media (prefers-reduced-motion: reduce) {
-      .reveal, .reveal-left { opacity: 1 !important; transform: none !important; filter: none !important; }
+      .reveal, .reveal-left { opacity: 1 !important; transform: none !important; }
       .hero-glow { transition: none; }
       * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
@@ -1426,6 +1426,10 @@
       _lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.lagSmoothing(0);
     }
+
+    // Apply blur initial state now that GSAP is confirmed available
+    gsap.set('.reveal',      { filter: 'blur(6px)' });
+    gsap.set('.reveal-left', { filter: 'blur(6px)' });
 
     // Scroll reveals
     ScrollTrigger.batch('.reveal', {
